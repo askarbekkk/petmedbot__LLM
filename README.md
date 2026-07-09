@@ -12,6 +12,12 @@ An AI veterinary assistant built with Streamlit and Google's Gemini API. Describ
 - Persistent multi-chat history (sidebar, like a typical chat app)
 - Never suggests medication dosages — always defers to a licensed vet
 
+## Architecture
+
+![PetMedBot request lifecycle](assets/architecture.png)
+
+The emergency keyword check runs as plain code, before the Gemini API is ever called — so a safety response never depends on the model getting it right.
+
 ## Tech stack
 
 - [Streamlit](https://streamlit.io/) — UI
