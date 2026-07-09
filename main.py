@@ -1,4 +1,5 @@
 import os
+import concurrent.futures
 import streamlit as st
 import google.generativeai as genai
 from datetime import datetime
@@ -6,6 +7,8 @@ from dotenv import load_dotenv
 from PIL import Image
 from chat_utils import load_chats, save_chats, create_chat, append_message
 from image_utils import analyze_image, save_uploaded_image
+
+_gemini_executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
 
 # --- Configure Gemini API ---
 load_dotenv()
@@ -59,6 +62,17 @@ GROUNDING:
   rather than guessing or inventing specifics."""
 
 model = genai.GenerativeModel("gemini-flash-lite-latest", system_instruction=SYSTEM_PROMPT)
+
+
+def generate_with_hard_timeout(contents, timeout=30):
+    """Run generate_content in a worker thread and give up after `timeout`
+    seconds regardless of what the underlying HTTP/gRPC call is doing —
+    the SDK's own request_options timeout isn't reliably enforced when the
+    connection stalls below the HTTP layer (e.g. on Streamlit Cloud)."""
+    future = _gemini_executor.submit(
+        model.generate_content, contents, request_options={"timeout": timeout}
+    )
+    return future.result(timeout=timeout + 5)
 
 # --- Emergency detection (code-level safeguard, not just prompt-level) ---
 EMERGENCY_KEYWORDS = [
@@ -267,10 +281,14 @@ guessing. Note whether the photo would be useful to show a vet, and what the own
 should do next."""
             try:
                 pil_image = Image.open(image_path)
-                img_response = model.generate_content(
-                    [prompt, pil_image], request_options={"timeout": 30}
-                )
+                img_response = generate_with_hard_timeout([prompt, pil_image])
                 img_reply = img_response.text
+            except concurrent.futures.TimeoutError:
+                img_reply = (
+                    "❌ The request to Gemini timed out. This is usually a "
+                    "temporary connectivity issue on the hosting side — try again "
+                    "in a moment."
+                )
             except Exception as e:
                 img_reply = f"❌ Error analyzing image: {e}"
 
@@ -338,10 +356,14 @@ if user_input:
             else:
                 try:
                     contents = build_conversation_contents(chat["messages"])
-                    response = model.generate_content(
-                        contents, request_options={"timeout": 30}
-                    )
+                    response = generate_with_hard_timeout(contents)
                     reply = response.text
+                except concurrent.futures.TimeoutError:
+                    reply = (
+                        "❌ The request to Gemini timed out. This is usually a "
+                        "temporary connectivity issue on the hosting side — try "
+                        "again in a moment."
+                    )
                 except Exception as e:
                     reply = f"❌ Error: {e}"
 
