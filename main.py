@@ -13,7 +13,7 @@ try:
     _secret_key = st.secrets.get("GEMINI_API_KEY", "")
 except Exception:
     _secret_key = ""
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY") or _secret_key)
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY") or _secret_key, transport="rest")
 
 SYSTEM_PROMPT = """You are Vet Assistant, a knowledgeable and caring AI companion for pet owners.
 You have the warmth and directness of an experienced vet tech who genuinely
@@ -267,7 +267,9 @@ guessing. Note whether the photo would be useful to show a vet, and what the own
 should do next."""
             try:
                 pil_image = Image.open(image_path)
-                img_response = model.generate_content([prompt, pil_image])
+                img_response = model.generate_content(
+                    [prompt, pil_image], request_options={"timeout": 30}
+                )
                 img_reply = img_response.text
             except Exception as e:
                 img_reply = f"❌ Error analyzing image: {e}"
@@ -336,7 +338,9 @@ if user_input:
             else:
                 try:
                     contents = build_conversation_contents(chat["messages"])
-                    response = model.generate_content(contents)
+                    response = model.generate_content(
+                        contents, request_options={"timeout": 30}
+                    )
                     reply = response.text
                 except Exception as e:
                     reply = f"❌ Error: {e}"
