@@ -2,7 +2,7 @@
 
 An AI veterinary assistant built with Streamlit and Google's Gemini API. Describe your pet's symptoms (or upload a photo) and get grounded, vet-tech-style guidance — with hard safety rules for actual emergencies.
 
-**Live demo:** _add your Streamlit Cloud URL here once deployed_
+**Live demo:** [petmedbot.streamlit.app](https://petmedbot.streamlit.app/)
 
 ## Features
 
